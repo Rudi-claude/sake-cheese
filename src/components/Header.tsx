@@ -15,9 +15,9 @@ export default function Header() {
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-1">
               <img src="/logo.png" alt="사케치즈" className="w-10 h-10 object-contain" />
-              <span className="text-xl font-bold text-gray-900">사케치즈</span>
+              <img src="/logo-text.png" alt="사케치즈" className="h-8 object-contain" />
             </Link>
 
             <nav className="flex items-center gap-6">
