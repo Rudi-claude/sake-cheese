@@ -20,7 +20,17 @@ export default function ReviewList({ reviews }: ReviewListProps) {
       {reviews.map((review) => (
         <div key={review.id} className="bg-white rounded-lg p-4 border border-gray-100">
           <div className="flex items-center justify-between mb-2">
-            <StarRating rating={review.rating} readonly size="sm" />
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center">
+                <span className="text-amber-600 text-xs font-medium">
+                  {review.user_id?.slice(0, 1).toUpperCase() || '?'}
+                </span>
+              </div>
+              <span className="text-sm text-gray-600 font-medium">
+                {review.user_id?.slice(0, 8) || '익명'}
+              </span>
+              <StarRating rating={review.rating} readonly size="sm" />
+            </div>
             <span className="text-sm text-gray-500">
               {new Date(review.created_at).toLocaleDateString('ko-KR')}
             </span>

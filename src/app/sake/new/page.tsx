@@ -54,7 +54,7 @@ export default function NewSakePage() {
       return;
     }
 
-    if (!formData.name_ko || !formData.prefecture_id || !formData.brewery || !formData.type) {
+    if (!formData.name_ko || !formData.brewery || !formData.type) {
       setError('필수 항목을 모두 입력해주세요.');
       return;
     }
@@ -220,15 +220,15 @@ export default function NewSakePage() {
         {/* 지역 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            생산 지역 <span className="text-red-500">*</span>
+            생산 지역
           </label>
           <select
             value={formData.prefecture_id}
             onChange={(e) => setFormData({ ...formData, prefecture_id: e.target.value })}
-            required
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           >
             <option value="">지역 선택</option>
+            <option value="unknown">알 수 없음</option>
             {prefectures.map(pref => (
               <option key={pref.id} value={pref.id}>
                 {pref.name_ko} ({pref.name_ja})
