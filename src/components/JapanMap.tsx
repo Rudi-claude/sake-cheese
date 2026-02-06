@@ -268,9 +268,10 @@ const prefectureIdToCode: Record<string, number> = {
 interface JapanMapProps {
   onPrefectureHover?: (prefecture: Prefecture | null) => void;
   selectedPrefecture?: string | null;
+  highlightedRegion?: string | null;
 }
 
-export default function JapanMap({ onPrefectureHover, selectedPrefecture }: JapanMapProps) {
+export default function JapanMap({ onPrefectureHover, selectedPrefecture, highlightedRegion }: JapanMapProps) {
   const router = useRouter();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -523,6 +524,7 @@ export default function JapanMap({ onPrefectureHover, selectedPrefecture }: Japa
 
               const isHovered = hoveredId === pref.id;
               const isSelected = selectedPrefecture === pref.id;
+              const isRegionHighlighted = highlightedRegion === pref.region;
               const baseColor = regionColors[pref.region];
 
               return (
@@ -538,9 +540,9 @@ export default function JapanMap({ onPrefectureHover, selectedPrefecture }: Japa
                     <path
                       key={idx}
                       d={pathD}
-                      fill={isHovered || isSelected ? '#fbbf24' : baseColor}
-                      stroke={isHovered || isSelected ? '#b45309' : '#374151'}
-                      strokeWidth={isHovered || isSelected ? 2 : 1}
+                      fill={isHovered || isSelected ? '#fbbf24' : isRegionHighlighted ? '#fbbf24' : baseColor}
+                      stroke={isHovered || isSelected ? '#b45309' : isRegionHighlighted ? '#b45309' : '#374151'}
+                      strokeWidth={isHovered || isSelected || isRegionHighlighted ? 2 : 1}
                       strokeLinejoin="round"
                       style={{
                         transition: 'fill 0.15s, stroke 0.15s',
@@ -550,6 +552,34 @@ export default function JapanMap({ onPrefectureHover, selectedPrefecture }: Japa
                 </g>
               );
             })}
+
+            {/* 지역명 라벨 */}
+            {[
+              { region: '홋카이도', x: 755, y: 165 },
+              { region: '도호쿠', x: 670, y: 440 },
+              { region: '간토', x: 650, y: 640 },
+              { region: '주부', x: 505, y: 595 },
+              { region: '긴키', x: 395, y: 715 },
+              { region: '주고쿠', x: 255, y: 685 },
+              { region: '시코쿠', x: 300, y: 785 },
+              { region: '규슈', x: 125, y: 820 },
+            ].map(({ region, x, y }) => (
+              <text
+                key={region}
+                x={x}
+                y={y}
+                textAnchor="middle"
+                fontSize="16"
+                fontWeight="bold"
+                fill="#374151"
+                stroke="white"
+                strokeWidth="3"
+                paintOrder="stroke"
+                style={{ pointerEvents: 'none' }}
+              >
+                {region}
+              </text>
+            ))}
           </g>
         </g>
 

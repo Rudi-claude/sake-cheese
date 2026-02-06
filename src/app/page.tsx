@@ -1,12 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import JapanMap from '@/components/JapanMap';
 import PrefectureInfo from '@/components/PrefectureInfo';
+import { allSakes, filterSakesByPrefecture } from '@/data/sakes';
 import { Prefecture } from '@/types';
 
 export default function Home() {
   const [selectedPrefecture, setSelectedPrefecture] = useState<Prefecture | null>(null);
+
+  const prefectureSakes = useMemo(() => {
+    if (!selectedPrefecture) return [];
+    return filterSakesByPrefecture(selectedPrefecture.id);
+  }, [selectedPrefecture]);
+
+  const imageCount = useMemo(() => {
+    return prefectureSakes.filter(s => s.image_url).length;
+  }, [prefectureSakes]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -38,7 +48,7 @@ export default function Home() {
 
         {/* 사이드 패널 */}
         <div className="lg:col-span-1">
-          <PrefectureInfo prefecture={selectedPrefecture} />
+          <PrefectureInfo prefecture={selectedPrefecture} sakeCount={selectedPrefecture ? prefectureSakes.length : undefined} />
 
           {/* 안내 카드 */}
           <div className="mt-6 bg-amber-50 rounded-lg p-4 border border-amber-200">
@@ -53,15 +63,21 @@ export default function Home() {
 
           {/* 지역별 통계 */}
           <div className="mt-6 bg-white rounded-lg shadow-md p-4">
-            <h3 className="font-bold text-gray-900 mb-3">지역별 현황</h3>
+            <h3 className="font-bold text-gray-900 mb-3">
+              {selectedPrefecture ? `${selectedPrefecture.name_ko} 현황` : '전체 현황'}
+            </h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="bg-gray-50 rounded p-2 text-center">
-                <p className="text-2xl font-bold text-amber-600">47</p>
-                <p className="text-gray-600">현</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {selectedPrefecture ? prefectureSakes.length : 47}
+                </p>
+                <p className="text-gray-600">{selectedPrefecture ? '등록 사케' : '현'}</p>
               </div>
               <div className="bg-gray-50 rounded p-2 text-center">
-                <p className="text-2xl font-bold text-amber-600">20+</p>
-                <p className="text-gray-600">사케</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {selectedPrefecture ? imageCount : allSakes.length}
+                </p>
+                <p className="text-gray-600">{selectedPrefecture ? '이미지 있음' : '전체 사케'}</p>
               </div>
             </div>
           </div>
