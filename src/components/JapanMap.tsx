@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { prefectures, regionColors } from '@/data/prefectures';
 import { Prefecture } from '@/types';
@@ -273,8 +273,175 @@ interface JapanMapProps {
 export default function JapanMap({ onPrefectureHover, selectedPrefecture }: JapanMapProps) {
   const router = useRouter();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Zoom/Pan state
+  const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const translateStartRef = useRef({ x: 0, y: 0 });
+  const lastTouchDistRef = useRef<number | null>(null);
+  const lastTouchCenterRef = useRef<{ x: number; y: number } | null>(null);
+  const isPinchingRef = useRef(false);
+
+  const MIN_SCALE = 1;
+  const MAX_SCALE = 5;
+
+  const clampTranslate = useCallback((tx: number, ty: number, s: number) => {
+    if (s <= 1) return { x: 0, y: 0 };
+    const maxT = ((s - 1) / s) * 500;
+    return {
+      x: Math.max(-maxT, Math.min(maxT, tx)),
+      y: Math.max(-maxT, Math.min(maxT, ty)),
+    };
+  }, []);
+
+  const zoomIn = useCallback(() => {
+    setScale(s => {
+      const next = Math.min(s + 0.5, MAX_SCALE);
+      setTranslate(t => clampTranslate(t.x, t.y, next));
+      return next;
+    });
+  }, [clampTranslate]);
+
+  const zoomOut = useCallback(() => {
+    setScale(s => {
+      const next = Math.max(s - 0.5, MIN_SCALE);
+      setTranslate(t => clampTranslate(t.x, t.y, next));
+      return next;
+    });
+  }, [clampTranslate]);
+
+  const resetZoom = useCallback(() => {
+    setScale(1);
+    setTranslate({ x: 0, y: 0 });
+  }, []);
+
+  // Mouse wheel zoom
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.3 : 0.3;
+    setScale(s => {
+      const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s + delta));
+      setTranslate(t => clampTranslate(t.x, t.y, next));
+      return next;
+    });
+  }, [clampTranslate]);
+
+  // Mouse pan
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (scale <= 1) return;
+    setIsPanning(true);
+    panStartRef.current = { x: e.clientX, y: e.clientY };
+    translateStartRef.current = { ...translate };
+  }, [scale, translate]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning || scale <= 1) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const svgSize = Math.min(rect.width, rect.height);
+    const dx = ((e.clientX - panStartRef.current.x) / svgSize) * 1000 / scale;
+    const dy = ((e.clientY - panStartRef.current.y) / svgSize) * 1000 / scale;
+    setTranslate(clampTranslate(
+      translateStartRef.current.x + dx,
+      translateStartRef.current.y + dy,
+      scale
+    ));
+  }, [isPanning, scale, clampTranslate]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  // Touch handlers for pinch-to-zoom and pan
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      isPinchingRef.current = true;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDistRef.current = Math.hypot(dx, dy);
+      lastTouchCenterRef.current = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      };
+    } else if (e.touches.length === 1 && scale > 1) {
+      setIsPanning(true);
+      panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      translateStartRef.current = { ...translate };
+    }
+  }, [scale, translate]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const center = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      };
+
+      if (lastTouchDistRef.current !== null) {
+        const pinchDelta = (dist - lastTouchDistRef.current) * 0.01;
+        setScale(s => {
+          const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s + pinchDelta));
+          return next;
+        });
+      }
+
+      if (lastTouchCenterRef.current && scale > 1) {
+        const container = containerRef.current;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const svgSize = Math.min(rect.width, rect.height);
+          const panDx = ((center.x - lastTouchCenterRef.current.x) / svgSize) * 1000 / scale;
+          const panDy = ((center.y - lastTouchCenterRef.current.y) / svgSize) * 1000 / scale;
+          setTranslate(t => clampTranslate(t.x + panDx, t.y + panDy, scale));
+        }
+      }
+
+      lastTouchDistRef.current = dist;
+      lastTouchCenterRef.current = center;
+    } else if (e.touches.length === 1 && isPanning && scale > 1) {
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const svgSize = Math.min(rect.width, rect.height);
+      const dx = ((e.touches[0].clientX - panStartRef.current.x) / svgSize) * 1000 / scale;
+      const dy = ((e.touches[0].clientY - panStartRef.current.y) / svgSize) * 1000 / scale;
+      setTranslate(clampTranslate(
+        translateStartRef.current.x + dx,
+        translateStartRef.current.y + dy,
+        scale
+      ));
+    }
+  }, [isPanning, scale, clampTranslate]);
+
+  const handleTouchEnd = useCallback(() => {
+    lastTouchDistRef.current = null;
+    lastTouchCenterRef.current = null;
+    isPinchingRef.current = false;
+    setIsPanning(false);
+  }, []);
+
+  // Prevent default touch behavior on container
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const prevent = (e: TouchEvent) => {
+      if (e.touches.length >= 2) e.preventDefault();
+    };
+    el.addEventListener('touchmove', prevent, { passive: false });
+    return () => el.removeEventListener('touchmove', prevent);
+  }, []);
 
   const handleClick = (prefectureId: string) => {
+    if (isPanning) return;
     router.push(`/prefecture/${prefectureId}`);
   };
 
@@ -288,106 +455,163 @@ export default function JapanMap({ onPrefectureHover, selectedPrefecture }: Japa
     onPrefectureHover?.(null);
   };
 
+  // Compute viewBox based on zoom and pan
+  const vbSize = 1000 / scale;
+  const vbX = (1000 - vbSize) / 2 - translate.x;
+  const vbY = (1000 - vbSize) / 2 - translate.y;
+
   return (
-    <svg
-      viewBox="0 0 1000 1000"
-      className="w-full h-full max-h-[80vh]"
-      style={{ backgroundColor: '#e0f2fe' }}
-    >
-      <g transform="matrix(1.028807, 0, 0, 1.028807, -47.544239, -28.806583)">
-        <g transform="translate(6, 18)">
-          {prefectures.map((pref) => {
-            const data = prefectureData[pref.id];
-            if (!data) return null;
+    <div ref={containerRef} className="relative w-full h-full" style={{ touchAction: scale > 1 ? 'none' : 'pan-y' }}>
+      {/* Zoom controls */}
+      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+        <button
+          onClick={zoomIn}
+          className="w-9 h-9 bg-white rounded-lg shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 active:bg-gray-100 text-lg font-bold"
+          aria-label="확대"
+        >
+          +
+        </button>
+        <button
+          onClick={zoomOut}
+          className="w-9 h-9 bg-white rounded-lg shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 active:bg-gray-100 text-lg font-bold"
+          aria-label="축소"
+        >
+          −
+        </button>
+        {scale > 1 && (
+          <button
+            onClick={resetZoom}
+            className="w-9 h-9 bg-white rounded-lg shadow-md border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 active:bg-gray-100"
+            aria-label="초기화"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        )}
+      </div>
 
-            const isHovered = hoveredId === pref.id;
-            const isSelected = selectedPrefecture === pref.id;
-            const baseColor = regionColors[pref.region];
-
-            return (
-              <g
-                key={pref.id}
-                transform={data.transform}
-                className="cursor-pointer"
-                onClick={() => handleClick(pref.id)}
-                onMouseEnter={() => handleMouseEnter(pref)}
-                onMouseLeave={handleMouseLeave}
-              >
-                {data.paths.map((pathD, idx) => (
-                  <path
-                    key={idx}
-                    d={pathD}
-                    fill={isHovered || isSelected ? '#fbbf24' : baseColor}
-                    stroke={isHovered || isSelected ? '#b45309' : '#374151'}
-                    strokeWidth={isHovered || isSelected ? 2 : 1}
-                    strokeLinejoin="round"
-                    style={{
-                      transition: 'fill 0.15s, stroke 0.15s',
-                    }}
-                  />
-                ))}
-              </g>
-            );
-          })}
-        </g>
-      </g>
-
-      {/* 호버 툴팁 */}
-      {hoveredId && (
-        <g style={{ pointerEvents: 'none' }}>
-          {(() => {
-            const pref = prefectures.find(p => p.id === hoveredId);
-            if (!pref) return null;
-
-            return (
-              <>
-                <rect
-                  x={20}
-                  y={20}
-                  width={120}
-                  height={60}
-                  fill="white"
-                  rx={8}
-                  stroke="#d1d5db"
-                  strokeWidth={1}
-                  style={{ filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}
-                />
-                <text
-                  x={80}
-                  y={45}
-                  textAnchor="middle"
-                  fontSize="16"
-                  fontWeight="bold"
-                  fill="#1f2937"
-                >
-                  {pref.name_ko}
-                </text>
-                <text
-                  x={80}
-                  y={65}
-                  textAnchor="middle"
-                  fontSize="12"
-                  fill="#6b7280"
-                >
-                  {pref.name_ja}
-                </text>
-              </>
-            );
-          })()}
-        </g>
+      {/* Zoom level indicator */}
+      {scale > 1 && (
+        <div className="absolute bottom-2 right-2 z-10 bg-white/80 rounded px-2 py-0.5 text-xs text-gray-500">
+          {Math.round(scale * 100)}%
+        </div>
       )}
 
-      {/* 범례 */}
-      <g transform="translate(800, 750)">
-        <rect x="-10" y="-20" width="180" height="115" fill="white" rx="8" opacity="0.95" stroke="#e5e7eb" />
-        <text x="0" y="0" fontSize="13" fontWeight="bold" fill="#374151">지역 구분</text>
-        {Object.entries(regionColors).map(([region, color], index) => (
-          <g key={region} transform={`translate(${(index % 2) * 85}, ${Math.floor(index / 2) * 20 + 15})`}>
-            <rect width="14" height="14" fill={color} rx="3" stroke="#374151" strokeWidth="0.5" />
-            <text x="18" y="11" fontSize="11" fill="#4b5563">{region}</text>
+      <svg
+        ref={svgRef}
+        viewBox={`${vbX} ${vbY} ${vbSize} ${vbSize}`}
+        className="w-full h-full"
+        style={{
+          backgroundColor: '#e0f2fe',
+          cursor: scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default',
+        }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <g transform="matrix(1.028807, 0, 0, 1.028807, -47.544239, -28.806583)">
+          <g transform="translate(6, 18)">
+            {prefectures.map((pref) => {
+              const data = prefectureData[pref.id];
+              if (!data) return null;
+
+              const isHovered = hoveredId === pref.id;
+              const isSelected = selectedPrefecture === pref.id;
+              const baseColor = regionColors[pref.region];
+
+              return (
+                <g
+                  key={pref.id}
+                  transform={data.transform}
+                  className="cursor-pointer"
+                  onClick={() => handleClick(pref.id)}
+                  onMouseEnter={() => handleMouseEnter(pref)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  {data.paths.map((pathD, idx) => (
+                    <path
+                      key={idx}
+                      d={pathD}
+                      fill={isHovered || isSelected ? '#fbbf24' : baseColor}
+                      stroke={isHovered || isSelected ? '#b45309' : '#374151'}
+                      strokeWidth={isHovered || isSelected ? 2 : 1}
+                      strokeLinejoin="round"
+                      style={{
+                        transition: 'fill 0.15s, stroke 0.15s',
+                      }}
+                    />
+                  ))}
+                </g>
+              );
+            })}
           </g>
-        ))}
-      </g>
-    </svg>
+        </g>
+
+        {/* 호버 툴팁 - fixed position in viewport */}
+        {hoveredId && (
+          <g style={{ pointerEvents: 'none' }}>
+            {(() => {
+              const pref = prefectures.find(p => p.id === hoveredId);
+              if (!pref) return null;
+
+              return (
+                <>
+                  <rect
+                    x={vbX + 15}
+                    y={vbY + 15}
+                    width={120 / scale}
+                    height={60 / scale}
+                    fill="white"
+                    rx={8 / scale}
+                    stroke="#d1d5db"
+                    strokeWidth={1 / scale}
+                    style={{ filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}
+                  />
+                  <text
+                    x={vbX + 15 + 60 / scale}
+                    y={vbY + 15 + 25 / scale}
+                    textAnchor="middle"
+                    fontSize={16 / scale}
+                    fontWeight="bold"
+                    fill="#1f2937"
+                  >
+                    {pref.name_ko}
+                  </text>
+                  <text
+                    x={vbX + 15 + 60 / scale}
+                    y={vbY + 15 + 45 / scale}
+                    textAnchor="middle"
+                    fontSize={12 / scale}
+                    fill="#6b7280"
+                  >
+                    {pref.name_ja}
+                  </text>
+                </>
+              );
+            })()}
+          </g>
+        )}
+
+        {/* 범례 - fixed in bottom-left of viewport */}
+        {scale <= 1.5 && (
+          <g transform={`translate(${vbX + vbSize - 190}, ${vbY + vbSize - 140})`}>
+            <rect x="-10" y="-20" width="180" height="115" fill="white" rx="8" opacity="0.95" stroke="#e5e7eb" />
+            <text x="0" y="0" fontSize="13" fontWeight="bold" fill="#374151">지역 구분</text>
+            {Object.entries(regionColors).map(([region, color], index) => (
+              <g key={region} transform={`translate(${(index % 2) * 85}, ${Math.floor(index / 2) * 20 + 15})`}>
+                <rect width="14" height="14" fill={color} rx="3" stroke="#374151" strokeWidth="0.5" />
+                <text x="18" y="11" fontSize="11" fill="#4b5563">{region}</text>
+              </g>
+            ))}
+          </g>
+        )}
+      </svg>
+    </div>
   );
 }

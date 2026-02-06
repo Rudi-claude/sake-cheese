@@ -24,11 +24,16 @@ export default function Home() {
       {/* 지도 + 사이드 패널 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* 지도 영역 */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-4">
-          <JapanMap
-            onPrefectureHover={setSelectedPrefecture}
-            selectedPrefecture={selectedPrefecture?.id}
-          />
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-2 sm:p-4">
+          <div className="h-[70vh] sm:h-[75vh] lg:h-auto lg:aspect-auto lg:min-h-[600px]">
+            <JapanMap
+              onPrefectureHover={setSelectedPrefecture}
+              selectedPrefecture={selectedPrefecture?.id}
+            />
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-1 lg:hidden">
+            두 손가락으로 확대/축소, 한 손가락으로 이동
+          </p>
         </div>
 
         {/* 사이드 패널 */}
