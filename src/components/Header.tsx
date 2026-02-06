@@ -16,7 +16,7 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <span className="text-3xl">🍶</span>
+              <img src="/logo.png" alt="사케치즈" className="w-10 h-10 object-contain" />
               <span className="text-xl font-bold text-gray-900">사케치즈</span>
             </Link>
 
