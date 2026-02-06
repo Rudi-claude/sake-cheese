@@ -5,11 +5,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getPrefectureById, regionColors } from '@/data/prefectures';
 import { allSakes, getSakeById } from '@/data/sakes';
+import { getSakeDetailById } from '@/data/sake-details';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import StarRating from '@/components/StarRating';
 import ReviewForm from '@/components/ReviewForm';
 import ReviewList from '@/components/ReviewList';
+import SakeTagChips from '@/components/SakeTagChips';
+import SakeDetailSpecs from '@/components/SakeDetailSpecs';
 import { Review } from '@/types';
 
 // 더미 리뷰 데이터
@@ -39,6 +42,7 @@ export default function SakePage({ params }: PageProps) {
   const { user } = useAuth();
 
   const sake = getSakeById(id) || allSakes.find(s => s.id === id);
+  const sakeDetail = getSakeDetailById(id);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -164,6 +168,19 @@ export default function SakePage({ params }: PageProps) {
               </div>
             )}
 
+            {/* 태그 칩 */}
+            {sakeDetail && (
+              <div className="mb-4">
+                <SakeTagChips
+                  tags={sakeDetail.characteristics}
+                  style={sakeDetail.style}
+                  polishingRate={sakeDetail.polishing_rate_detail}
+                  riceVariety={sakeDetail.rice_variety}
+                  abv={sakeDetail.abv}
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <p className="text-sm text-gray-500">양조장</p>
@@ -209,7 +226,8 @@ export default function SakePage({ params }: PageProps) {
               )}
             </div>
 
-            {sake.description && (
+            {/* 상세 정보가 없는 경우 기존 설명 표시 */}
+            {!sakeDetail && sake.description && (
               <div>
                 <p className="text-sm text-gray-500 mb-2">설명</p>
                 <p className="text-gray-700 leading-relaxed">{sake.description}</p>
@@ -218,6 +236,13 @@ export default function SakePage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* 상세 스펙 섹션 */}
+      {sakeDetail && (
+        <div className="mb-8">
+          <SakeDetailSpecs detail={sakeDetail} />
+        </div>
+      )}
 
       {/* 리뷰 섹션 */}
       <div className="grid md:grid-cols-2 gap-8">

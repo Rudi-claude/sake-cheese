@@ -73,3 +73,45 @@ export interface PrefectureStats {
   sake_count: number;
   avg_rating: number | null;
 }
+
+// 맛/향 프로필
+export interface FlavorProfile {
+  aroma: string[];       // 향 키워드 (예: '사과', '바나나', '쌀')
+  taste: string[];       // 맛 키워드 (예: '드라이', '감칠맛', '산미')
+  finish: string;        // 여운 설명
+  body: '라이트' | '미디엄' | '풀';
+  temperature: string[]; // 추천 온도 (예: '냉주', '상온', '데운술')
+}
+
+// 음식 페어링
+export interface FoodPairing {
+  category: string;      // 카테고리 (예: '해산물', '육류')
+  items: string[];       // 구체적 음식
+  description?: string;  // 페어링 설명
+}
+
+// 양조장 상세
+export interface BreweryDetail {
+  name_ko: string;
+  name_ja: string;
+  founded?: string;      // 설립연도
+  location: string;      // 소재지
+  philosophy?: string;   // 양조 철학
+  water_source?: string; // 사용 수원
+  toji?: string;         // 도지(양조 책임자) 유파
+}
+
+// 사케 상세 정보
+export interface SakeDetail {
+  sake_id: string;
+  style?: string;              // 스타일 (예: '탄려', '농순', '경쾌')
+  abv?: string;                // 알코올 도수
+  rice_variety?: string;       // 원료미
+  polishing_rate_detail?: string; // 정미율 상세
+  characteristics: string[];   // 주요 특징 키워드
+  storage: string;             // 보관법
+  detailed_description: string;// 상세 설명
+  flavor_profile: FlavorProfile;
+  food_pairings: FoodPairing[];
+  brewery_detail: BreweryDetail;
+}
