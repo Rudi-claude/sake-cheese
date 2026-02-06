@@ -27,6 +27,9 @@ export default function Header() {
               <Link href="/sake" className="text-gray-600 hover:text-amber-600 transition-colors">
                 사케 목록
               </Link>
+              <Link href="/wiki" className="text-gray-600 hover:text-amber-600 transition-colors">
+                사케 위키
+              </Link>
 
               {loading ? (
                 <div className="w-20 h-10 bg-gray-200 animate-pulse rounded-lg" />
