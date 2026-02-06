@@ -187,6 +187,26 @@ export default function SakePage({ params }: PageProps) {
                   </Link>
                 )}
               </div>
+              {sake.polishing_rate && (
+                <div>
+                  <p className="text-sm text-gray-500">정미보합</p>
+                  <p className="font-medium text-gray-900">{sake.polishing_rate}%</p>
+                </div>
+              )}
+              {sake.sweetness != null && (
+                <div>
+                  <p className="text-sm text-gray-500">아마카라</p>
+                  <p className="font-medium text-gray-900">
+                    {sake.sweetness === -2 ? '매우 달콤' : sake.sweetness === -1 ? '달콤' : sake.sweetness === 0 ? '중간' : sake.sweetness === 1 ? '드라이' : '매우 드라이'}
+                  </p>
+                </div>
+              )}
+              {sake.smv != null && (
+                <div>
+                  <p className="text-sm text-gray-500">일본주도 (SMV)</p>
+                  <p className="font-medium text-gray-900">{sake.smv > 0 ? `+${sake.smv}` : sake.smv}</p>
+                </div>
+              )}
             </div>
 
             {sake.description && (

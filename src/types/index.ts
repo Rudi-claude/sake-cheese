@@ -41,6 +41,9 @@ export interface Sake {
   description: string;
   image_url: string | null;
   avg_rating: number | null;
+  polishing_rate: number | null;
+  sweetness: number | null;
+  smv: number | null;
   created_at?: string;
 }
 

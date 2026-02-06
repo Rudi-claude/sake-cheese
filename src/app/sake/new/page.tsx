@@ -20,6 +20,9 @@ export default function NewSakePage() {
     brewery: '',
     type: '',
     description: '',
+    polishing_rate: '',
+    sweetness: '',
+    smv: '',
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -89,6 +92,9 @@ export default function NewSakePage() {
         brewery: formData.brewery,
         type: formData.type,
         description: formData.description || null,
+        polishing_rate: formData.polishing_rate ? Number(formData.polishing_rate) : null,
+        sweetness: formData.sweetness ? Number(formData.sweetness) : null,
+        smv: formData.smv ? Number(formData.smv) : null,
         image_url: imageUrl,
         created_by: user.id,
       });
@@ -262,6 +268,58 @@ export default function NewSakePage() {
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
+        </div>
+
+        {/* 정미보합 / 아마카라 / 일본주도 */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              정미보합 (%)
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={formData.polishing_rate}
+              onChange={(e) => setFormData({ ...formData, polishing_rate: e.target.value })}
+              placeholder="예: 50"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-400 mt-1">쌀을 깎은 비율</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              아마카라
+            </label>
+            <select
+              value={formData.sweetness}
+              onChange={(e) => setFormData({ ...formData, sweetness: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            >
+              <option value="">선택</option>
+              <option value="-2">매우 달콤</option>
+              <option value="-1">달콤</option>
+              <option value="0">중간</option>
+              <option value="1">드라이</option>
+              <option value="2">매우 드라이</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">단맛/쓴맛 정도</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              일본주도 (SMV)
+            </label>
+            <input
+              type="number"
+              min="-15"
+              max="15"
+              value={formData.smv}
+              onChange={(e) => setFormData({ ...formData, smv: e.target.value })}
+              placeholder="예: +3"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-400 mt-1">+ 드라이 / - 스위트</p>
+          </div>
         </div>
 
         {/* 설명 */}
